@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+{% load bootstrap3 %}
+{% load staticfiles %}
+{% load flatpages %}
+{% get_flatpages as flatpages %}
+  <head>
+    <title>{% block title %}Artista Profissional{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    {% bootstrap_css %}
+    <link rel="stylesheet" href="{% static 'website/main.css' %}" />
+    <script src="//code.jquery.com/jquery.js"></script>
+  </head>
+  <body>
+
+
+    {% bootstrap_javascript %}
+
+    <div class="container">
+
+      <!-- Static navbar -->
+      <div class="navbar navbar-default">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="/">Artista Profissional</a>
+        </div>
+        <div class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+          {% for page in flatpages %}
+              <li><a href="{{ page.url }}">{{ page.title }}</a></li>
+          {% endfor %}
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+
+      {% block content %}{% endblock %}
+
+    </div> <!-- /container -->
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    {% bootstrap_javascript %}
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

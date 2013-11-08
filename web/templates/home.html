@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load staticfiles %}
+
+{% block content %}
+<h1>Gráficos</h1>
+
+<div class="col-md-4">
+    <h3>Regiões - densidade</h3>
+    <div class="map" id="region-map"></div>
+</div>
+<div class="col-md-4">
+    <h3>Mapa de calor</h3>
+    <div class="map" id="heat-map"></div>
+</div>
+<div class="col-md-4">
+    <h3>Reclamações por categoria</h3>
+    <div class="map" id="fact-chart"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'website/heatmap.js' %}"></script>
+<script src="{% static 'website/heatmap-leaflet.js' %}"></script>
+<script src="//code.highcharts.com/highcharts.js"></script>
+<script>
+var geoJsonUrl = "{% static 'website/sptrans-areas.geojson' %}",
+    occurrenciesPointsUrl = "{% url 'broker:report_occurrences_points' %}",
+    totalPerRegionUrl = "{% url 'broker:report_total_per_region' %}",
+    factsComplaintsUrl = "{% url 'broker:report_facts_complaints' %}";
+
+function getColor(d) {
+    return d > 1400 ? '#FF0000' :
+           d > 1200  ? '#FF2222' :
+           d > 1000  ? '#FF4444' :
+           d > 800  ? '#FF6666' :
+           d > 600   ? '#FF8888' :
+           d > 400   ? '#FFAAAA' :
+           d > 200   ? '#FFCCCC' :
+                      '#FFFFFF';
+}
+
+$(document).ready(function(){
+    var initialCoordinates = [-23.6725, -46.5995],
+        initialZoom = 9,
+        regionMap = L.map('region-map').setView(initialCoordinates, initialZoom),
+        heatMap = L.map('heat-map').setView(initialCoordinates, initialZoom),
+        tileUrl = 'http://{s}.tiles.mapbox.com/v3/examples.map-vyofok3q/{z}/{x}/{y}.png',
+        tileConfigs = {
+            maxZoom: 18,
+            attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://cloudmade.com">CloudMade</a>'
+        },
+        info = L.control(),
+        geojson,
+        heatmapLayer;
+
+    L.tileLayer(tileUrl, tileConfigs).addTo(regionMap);
+    L.tileLayer(tileUrl, tileConfigs).addTo(heatMap);
+
+    info.onAdd = function(map) {
+        this._div = L.DomUtil.create('div', 'info');
+        this.update();
+        return this._div;
+    };
+    info.update = function(properties) {
+        this._div.innerHTML = '<h4>Reclamações<br />por área de transporte</h4>' + (properties ?
+            '<strong>Área ' + properties.area + ' ' + properties.nome + ':</strong> '
+                + regionData[properties.area] + ' reclamações'
+                : 'Passe o mouse nas áreas'
+        );
+    }
+
+
+    function style(feature) {
+        return {
+            weight: 2,
+            opacity: 1,
+            color: 'white',
+            dashArray: '3',
+            fillOpacity: 0.7,
+            fillColor: getColor(feature.properties.density)
+        };
+    }
+
+    function highlightFeature(e) {
+        var layer = e.target;
+
+        layer.setStyle({
+            weight: 5,
+            color: '#666',
+            dashArray: '',
+            fillOpacity: 0.7
+        });
+
+        if (!L.Browser.ie && !L.Browser.opera) {
+            layer.bringToFront();
+        }
+
+        info.update(layer.feature.properties);
+    }
+
+    function resetHighlight(e) {
+        geojson.resetStyle(e.target);
+        info.update();
+    }
+
+    function zoomToFeature(e) {
+        regionMap.fitBounds(e.target.getBounds());
+    }
+
+    function onEachFeature(feature, layer) {
+        layer.on({
+            mouseover: highlightFeature,
+            mouseout: resetHighlight,
+            click: zoomToFeature
+        });
+    }
+
+    heatmapLayer = L.TileLayer.heatMap({
+        radius: 5,
+        opacity: 0.8,
+        gradient: {
+            0.45: "rgb(0,0,255)",
+            0.55: "rgb(0,255,255)",
+            0.65: "rgb(0,255,0)",
+            0.95: "yellow",
+            1.0: "rgb(255,0,0)"
+        }
+    });
+
+
+    $.getJSON(geoJsonUrl, function(geoJsonData){
+        $.getJSON(totalPerRegionUrl, function(regionData){
+            geojson = L.geoJson(geoJsonData, {
+                'style': function(feature){
+                    var regionDensity = regionData[feature.properties.area];
+
+                    return {
+                        'fillColor': getColor(regionDensity),
+                        'fillOpacity': 0.8,
+                        'stroke': false
+                    }
+                },
+                'onEachFeature': onEachFeature
+            }).addTo(regionMap);
+            info.addTo(regionMap);
+        });
+    });
+
+    $.getJSON(occurrenciesPointsUrl, function(data){
+        heatmapLayer.addData(data);
+        heatmapLayer.addTo(heatMap);
+    });
+
+    $.getJSON(factsComplaintsUrl, function(data){
+        Highcharts.getOptions().colors = Highcharts.map(Highcharts.getOptions().colors, function(color) {
+            return {
+                radialGradient: { cx: 0.5, cy: 0.3, r: 0.7 },
+                stops: [
+                    [0, color],
+                    [1, Highcharts.Color(color).brighten(-0.3).get('rgb')] // darken
+                ]
+            };
+        });
+        $('#fact-chart').highcharts({
+            chart: {
+                plotBackgroundColor: null,
+                plotBorderWidth: null,
+                plotShadow: false
+            },
+            title: {
+                text: ''
+            },
+            tooltip: {
+                pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+            },
+            plotOptions: {
+                pie: {
+                    allowPointSelect: true,
+                    cursor: 'pointer',
+                    dataLabels: {
+                        enabled: false,
+                    }
+                }
+            },
+            series: [{
+                type: 'pie',
+                name: 'Reclamações',
+                data: data
+            }]
+        });
+    });
+});
+</script>
+{% endblock %}
