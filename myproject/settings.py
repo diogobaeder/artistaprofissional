@@ -10,6 +10,9 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+import socket
+
+
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
@@ -20,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SECRET_KEY = 'z12k538u4o%!0s+9fc+^kk0g^h(qv8ixie&x((7i$wzh_klm#a'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = 'webfaction' not in socket.gethostname()
 
 TEMPLATE_DEBUG = True
 
