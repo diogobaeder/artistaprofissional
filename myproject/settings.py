@@ -23,7 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SECRET_KEY = 'z12k538u4o%!0s+9fc+^kk0g^h(qv8ixie&x((7i$wzh_klm#a'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = 'webfaction' not in socket.gethostname()
+DEBUG = False
 
 TEMPLATE_DEBUG = True
 
@@ -91,3 +91,8 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 SITE_ID = 1
+
+try:
+    from local_settings import *
+except ImportError:
+    pass
