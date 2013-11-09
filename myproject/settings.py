@@ -92,6 +92,8 @@ STATIC_URL = '/static/'
 
 SITE_ID = 1
 
+MEDIA_URL = '/media/'
+
 try:
     from local_settings import *
 except ImportError:
